@@ -1,4 +1,7 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 void main() {
@@ -14,32 +17,80 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Flutter Demo',
+      title: 'Age Guesser',
       theme: ThemeData(
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const App(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title;
+class App extends StatefulWidget {
+  const App({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<App> createState() => _AppState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  final PageController _controller = PageController(viewportFraction: 0.5);
-  int _index = 0;
+class _AppState extends State<App> {
+  int _index = 63;
+  final List<int> _ages = List.generate(100, (index) => index + 1);
+  bool _isCorrect = false;
+
+  final PageController _controller = PageController(
+    viewportFraction: 0.5,
+    initialPage: 63,
+  );
+
+  int guess = 63 + 1;
+  int _lastAbove = 0;
+  int _lastBelow = 0;
+  final maxGuesses = 6;
+  int _guesses = 0;
+  final List<Color> guessColors = [
+    const Color(0xFF3E777B),
+    const Color(0xFFFFD700),
+    const Color(0xFFFFA500),
+    const Color(0xFFFF6347),
+    const Color(0xFFFF4500),
+    const Color(0xFF8B0000),
+  ];
+
+  calculateGuessesAsPercentage() {
+    return (_guesses / maxGuesses) * 100;
+  }
+
+  calculateNextGuess(isAbove) {
+    if (isAbove) {
+      print("current guess: $guess is lower");
+      _lastAbove = guess;
+    } else {
+      print("current guess: $guess is higher");
+      _lastBelow = guess;
+    }
+
+    guess = ((_lastAbove + _lastBelow) / 2).floor();
+    print("next guess: $guess");
+    _guesses++;
+  }
+
+  reset() {
+    guess = 63 + 1;
+    _lastAbove = 0;
+    _lastBelow = 0;
+    _isCorrect = false;
+
+    _controller.animateToPage(
+      guess - 1,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeIn,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // bottomNavigationBar: SafeArea(bottom: false, child: Container()),
       backgroundColor: kPrimaryColor,
       body: SafeArea(
         bottom: false,
@@ -48,19 +99,19 @@ class _MyHomePageState extends State<MyHomePage> {
             Expanded(
               flex: 2,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
-                      vertical: 2,
+                      vertical: 10,
                     ),
                     child: Text(
-                      'Age',
+                      'Age Guesser',
                       style: GoogleFonts.poppins(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black54,
+                        color: Colors.black87,
                         letterSpacing: 0.1,
                       ),
                     ),
@@ -68,15 +119,18 @@ class _MyHomePageState extends State<MyHomePage> {
                   Expanded(
                     child: LayoutBuilder(
                       builder: (context, constraints) {
+                        double width = min(constraints.maxHeight * 0.935, 400);
+
                         return Stack(
                           children: [
                             Positioned(
-                              top: constraints.maxHeight * 0.209,
-                              left: constraints.maxWidth * 0.345,
+                              top: MediaQuery.of(context).size.width * 0.25,
+                              left: MediaQuery.of(context).size.width * 0.12,
+                              width: MediaQuery.of(context).size.width,
                               child: Container(
                                 alignment: Alignment.center,
-                                width: constraints.maxHeight * 0.50,
-                                height: constraints.maxHeight * 0.50,
+                                width: width - 190,
+                                height: width - 190,
                                 decoration: const BoxDecoration(
                                   color: Colors.white,
                                   shape: BoxShape.circle,
@@ -84,12 +138,14 @@ class _MyHomePageState extends State<MyHomePage> {
                               ),
                             ),
                             Positioned(
-                              left: constraints.maxWidth * 0.1,
+                              width: MediaQuery.of(context).size.width,
+                              height: MediaQuery.of(context).size.width,
+                              left: constraints.maxWidth * 0.12,
                               child: Container(
                                 clipBehavior: Clip.antiAlias,
                                 alignment: Alignment.center,
-                                width: constraints.maxHeight * 0.90,
-                                height: constraints.maxHeight * 0.90,
+                                width: MediaQuery.of(context).size.width,
+                                height: MediaQuery.of(context).size.width,
                                 decoration: BoxDecoration(
                                   color: Colors.white54,
                                   borderRadius: BorderRadius.all(
@@ -101,25 +157,28 @@ class _MyHomePageState extends State<MyHomePage> {
                                 child: SizedBox(
                                   height: double.infinity, // Card height
                                   child: PageView.builder(
-                                    itemCount: 10,
+                                    itemCount: _ages.length,
                                     scrollDirection: Axis.vertical,
-                                    physics: ClampingScrollPhysics(),
+                                    physics: const ClampingScrollPhysics(),
                                     controller: _controller,
                                     pageSnapping: true,
                                     onPageChanged: (index) => setState(
-                                      () => _index = index,
+                                      () {
+                                        _index = index;
+                                        HapticFeedback.lightImpact();
+                                      },
                                     ),
                                     itemBuilder: (context, index) {
                                       return Center(
                                         child: Text(
-                                          '${index + 10}',
+                                          '${_ages[index]}',
                                           style: GoogleFonts.notoSerif(
                                             fontSize:
                                                 _index == index ? 120 : 110,
                                             fontWeight: FontWeight.bold,
                                             color: _index == index
                                                 ? Colors.black
-                                                : Colors.black38,
+                                                : const Color(0xFFC3E0E3),
                                           ),
                                         ),
                                       );
@@ -138,6 +197,7 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             Flexible(
               child: Container(
+                clipBehavior: Clip.antiAlias,
                 width: double.infinity,
                 decoration: const BoxDecoration(
                   color: Colors.white,
@@ -148,30 +208,45 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
                 child: Column(
                   children: [
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        // horizontal: 2,
-                        vertical: 10,
-                      ),
-                      child: Column(
-                        children: [
-                          const CircularProgressIndicator(
-                            color: kPrimaryColor,
-                            strokeWidth: 5,
+                    Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                            horizontal: 20,
                           ),
-                          const SizedBox(height: 10),
-                          Text(
-                            'guessing your age'.toUpperCase(),
-                            style: GoogleFonts.notoSans(
-                              fontSize: 15,
-                              // fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
+                          child: LinearProgressIndicator(
+                            minHeight: 6,
+                            backgroundColor: kPrimaryColor,
+                            color: guessColors[_guesses == 0 ? 0 : _guesses - 1],
+                            borderRadius: BorderRadius.circular(10),
+                            value: calculateGuessesAsPercentage() / 100,
+                            semanticsLabel: 'Linear progress indicator',
                           ),
-                        ],
-                      ),
+                        ),
+                        Text(
+                          'is your age'.toUpperCase(),
+                          style: GoogleFonts.notoSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
                     ),
+                    // Padding(
+                    //   padding: const EdgeInsets.symmetric(
+                    //     vertical: 8,
+                    //   ),
+                    //   child: Text(
+                    //     'your age is'.toUpperCase(),
+                    //     style: GoogleFonts.notoSans(
+                    //       fontSize: 15,
+                    //       fontWeight: FontWeight.bold,
+                    //       color: Colors.black,
+                    //     ),
+                    //   ),
+                    // ),
                     Expanded(
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -184,15 +259,16 @@ class _MyHomePageState extends State<MyHomePage> {
                               width: double.infinity,
                               child: ElevatedButton(
                                 onPressed: () {
+                                  calculateNextGuess(true);
                                   _controller.animateToPage(
-                                    _index + 3,
+                                    guess - 1,
                                     duration: const Duration(milliseconds: 500),
                                     curve: Curves.easeIn,
                                   );
                                 },
                                 // change border radius
                                 style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.all(8),
+                                  padding: const EdgeInsets.all(18),
                                   backgroundColor: Colors.black,
                                   foregroundColor: Colors.white,
                                   shape: RoundedRectangleBorder(
@@ -200,7 +276,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                   ),
                                 ),
                                 child: Text(
-                                  'Above'.toUpperCase(),
+                                  "Above ${_index + 1} ?".toUpperCase(),
                                   style: GoogleFonts.notoSans(
                                     fontSize: 10,
                                     letterSpacing: 1.5,
@@ -212,15 +288,14 @@ class _MyHomePageState extends State<MyHomePage> {
                               width: double.infinity,
                               child: ElevatedButton(
                                 onPressed: () {
-                                  _controller.animateToPage(
-                                    _index - 3,
-                                    duration: const Duration(milliseconds: 500),
-                                    curve: Curves.easeIn,
-                                  );
+                                  setState(() {
+                                    _isCorrect = true;
+                                    reset();
+                                  });
                                 },
                                 // change border radius
                                 style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.all(8),
+                                  padding: const EdgeInsets.all(18),
                                   backgroundColor: kPrimaryColor,
                                   foregroundColor: Colors.black,
                                   shape: RoundedRectangleBorder(
@@ -241,15 +316,16 @@ class _MyHomePageState extends State<MyHomePage> {
                               width: double.infinity,
                               child: ElevatedButton(
                                 onPressed: () {
+                                  calculateNextGuess(false);
                                   _controller.animateToPage(
-                                    _index - 3,
+                                    guess - 1,
                                     duration: const Duration(milliseconds: 500),
                                     curve: Curves.easeIn,
                                   );
                                 },
                                 // change border radius
                                 style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.all(8),
+                                  padding: const EdgeInsets.all(18),
                                   backgroundColor: Colors.black,
                                   foregroundColor: Colors.white,
                                   shape: RoundedRectangleBorder(
@@ -257,7 +333,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                   ),
                                 ),
                                 child: Text(
-                                  'Below'.toUpperCase(),
+                                  "Below ${_index + 1} ?".toUpperCase(),
                                   style: GoogleFonts.notoSans(
                                     fontSize: 10,
                                     letterSpacing: 1.5,
