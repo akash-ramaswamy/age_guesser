@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -34,16 +35,18 @@ class App extends StatefulWidget {
 }
 
 class _AppState extends State<App> {
-  int _index = 63;
+  int _index = 99;
   final List<int> _ages = List.generate(100, (index) => index + 1);
   bool _isCorrect = false;
 
   final PageController _controller = PageController(
     viewportFraction: 0.5,
-    initialPage: 63,
+    initialPage: 99,
   );
+  late ConfettiController _controllerCenter;
+  late ConfettiController _controllerPopupInGame;
 
-  int guess = 63 + 1;
+  int guess = 99 + 1;
   int _lastAbove = 0;
   int _lastBelow = 0;
   final maxGuesses = 6;
@@ -63,29 +66,52 @@ class _AppState extends State<App> {
 
   calculateNextGuess(isAbove) {
     if (isAbove) {
-      print("current guess: $guess is lower");
+      debugPrint("current guess: $guess is lower");
       _lastAbove = guess;
     } else {
-      print("current guess: $guess is higher");
+      debugPrint("current guess: $guess is higher");
       _lastBelow = guess;
     }
 
     guess = ((_lastAbove + _lastBelow) / 2).floor();
-    print("next guess: $guess");
     _guesses++;
+    debugPrint("current guess num : $_guesses");
+
+    if (_guesses >= maxGuesses) {
+      debugPrint("max guesses reached $_index");
+      _dialogBuilder(context);
+    }
   }
 
   reset() {
-    guess = 63 + 1;
+    guess = 99 + 1;
     _lastAbove = 0;
     _lastBelow = 0;
     _isCorrect = false;
+    _guesses = 0;
 
     _controller.animateToPage(
       guess - 1,
       duration: const Duration(milliseconds: 500),
       curve: Curves.easeIn,
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _controllerCenter =
+        ConfettiController(duration: const Duration(seconds: 3));
+    _controllerPopupInGame =
+        ConfettiController(duration: const Duration(seconds: 3));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _controllerCenter.dispose();
+    _controllerPopupInGame.dispose();
+    super.dispose();
   }
 
   @override
@@ -218,7 +244,8 @@ class _AppState extends State<App> {
                           child: LinearProgressIndicator(
                             minHeight: 6,
                             backgroundColor: kPrimaryColor,
-                            color: guessColors[_guesses == 0 ? 0 : _guesses - 1],
+                            color:
+                                guessColors[_guesses == 0 ? 0 : _guesses - 1],
                             borderRadius: BorderRadius.circular(10),
                             value: calculateGuessesAsPercentage() / 100,
                             semanticsLabel: 'Linear progress indicator',
@@ -259,6 +286,9 @@ class _AppState extends State<App> {
                               width: double.infinity,
                               child: ElevatedButton(
                                 onPressed: () {
+                                  if (_isCorrect || guess >= 100) {
+                                    return;
+                                  }
                                   calculateNextGuess(true);
                                   _controller.animateToPage(
                                     guess - 1,
@@ -288,10 +318,17 @@ class _AppState extends State<App> {
                               width: double.infinity,
                               child: ElevatedButton(
                                 onPressed: () {
-                                  setState(() {
-                                    _isCorrect = true;
-                                    reset();
-                                  });
+                                  if (_isCorrect) {
+                                    return;
+                                  }
+                                  _isCorrect = true;
+                                  _controllerPopupInGame.play();
+                                  Future.delayed(
+                                    const Duration(seconds: 4),
+                                    () => setState(() {
+                                      reset();
+                                    }),
+                                  );
                                 },
                                 // change border radius
                                 style: ElevatedButton.styleFrom(
@@ -316,6 +353,9 @@ class _AppState extends State<App> {
                               width: double.infinity,
                               child: ElevatedButton(
                                 onPressed: () {
+                                  if (_isCorrect) {
+                                    return;
+                                  }
                                   calculateNextGuess(false);
                                   _controller.animateToPage(
                                     guess - 1,
@@ -349,9 +389,145 @@ class _AppState extends State<App> {
                 ),
               ),
             ),
+            Align(
+              alignment: Alignment.center,
+              child: ConfettiWidget(
+                confettiController: _controllerPopupInGame,
+                blastDirectionality: BlastDirectionality
+                    .explosive, // don't specify a direction, blast randomly
+                shouldLoop:
+                    false, // start again as soon as the animation is finished
+                colors: const [
+                  Colors.green,
+                  Colors.blue,
+                  Colors.pink,
+                  Colors.orange,
+                  Colors.purple
+                ], // manually specify the colors to be used
+              ),
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _dialogBuilder(BuildContext context) {
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          title: Text(
+            'Your age is'.toUpperCase(),
+            textAlign: TextAlign.center,
+            style: GoogleFonts.notoSans(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          content: SizedBox(
+            height: 150,
+            width: 500,
+            child: Column(
+              children: [
+                Text(
+                  "${guess}",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.notoSans(
+                    fontSize: 80,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.center,
+                  child: ConfettiWidget(
+                    confettiController: _controllerCenter,
+                    blastDirectionality: BlastDirectionality
+                        .explosive, // don't specify a direction, blast randomly
+                    shouldLoop:
+                        false, // start again as soon as the animation is finished
+                    colors: const [
+                      Colors.green,
+                      Colors.blue,
+                      Colors.pink,
+                      Colors.orange,
+                      Colors.purple
+                    ], // manually specify the colors to be used
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actionsAlignment: MainAxisAlignment.spaceEvenly,
+          actions: <Widget>[
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  reset();
+                });
+                Navigator.of(context).pop();
+              },
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+                backgroundColor: Colors.black,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: Text(
+                "Wrong".toUpperCase(),
+                style: GoogleFonts.notoSans(
+                  fontSize: 10,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (_isCorrect) {
+                  return;
+                }
+                _isCorrect = true;
+                _controllerCenter.play();
+                Future.delayed(const Duration(seconds: 4), () {
+                  setState(() {
+                    reset();
+                  });
+                  Navigator.of(context).pop();
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+                backgroundColor: kPrimaryColor,
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: Text(
+                "Correct".toUpperCase(),
+                style: GoogleFonts.notoSans(
+                  fontSize: 10,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
