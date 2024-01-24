@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'components/game_controller.dart';
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -90,6 +91,44 @@ class _AppState extends State<App> {
     _isCorrect = false;
     _guesses = 0;
 
+    _controller.animateToPage(
+      guess - 1,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeIn,
+    );
+  }
+
+  _aboveAction() {
+    if (_isCorrect || guess >= 100) {
+      return;
+    }
+    calculateNextGuess(true);
+    _controller.animateToPage(
+      guess - 1,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeIn,
+    );
+  }
+
+  _correctAction() {
+    if (_isCorrect) {
+      return;
+    }
+    _isCorrect = true;
+    _controllerPopupInGame.play();
+    Future.delayed(
+      const Duration(seconds: 4),
+      () => setState(() {
+        reset();
+      }),
+    );
+  }
+
+  _belowAction() {
+    if (_isCorrect) {
+      return;
+    }
+    calculateNextGuess(false);
     _controller.animateToPage(
       guess - 1,
       duration: const Duration(milliseconds: 500),
@@ -261,127 +300,18 @@ class _AppState extends State<App> {
                         ),
                       ],
                     ),
-                    // Padding(
-                    //   padding: const EdgeInsets.symmetric(
-                    //     vertical: 8,
-                    //   ),
-                    //   child: Text(
-                    //     'your age is'.toUpperCase(),
-                    //     style: GoogleFonts.notoSans(
-                    //       fontSize: 15,
-                    //       fontWeight: FontWeight.bold,
-                    //       color: Colors.black,
-                    //     ),
-                    //   ),
-                    // ),
                     Expanded(
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20,
                         ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  if (_isCorrect || guess >= 100) {
-                                    return;
-                                  }
-                                  calculateNextGuess(true);
-                                  _controller.animateToPage(
-                                    guess - 1,
-                                    duration: const Duration(milliseconds: 500),
-                                    curve: Curves.easeIn,
-                                  );
-                                },
-                                // change border radius
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.all(18),
-                                  backgroundColor: Colors.black,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                                child: Text(
-                                  "Above ${_index + 1} ?".toUpperCase(),
-                                  style: GoogleFonts.notoSans(
-                                    fontSize: 10,
-                                    letterSpacing: 1.5,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  if (_isCorrect) {
-                                    return;
-                                  }
-                                  _isCorrect = true;
-                                  _controllerPopupInGame.play();
-                                  Future.delayed(
-                                    const Duration(seconds: 4),
-                                    () => setState(() {
-                                      reset();
-                                    }),
-                                  );
-                                },
-                                // change border radius
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.all(18),
-                                  backgroundColor: kPrimaryColor,
-                                  foregroundColor: Colors.black,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                                child: Text(
-                                  'correct'.toUpperCase(),
-                                  style: GoogleFonts.notoSans(
-                                    fontSize: 12,
-                                    letterSpacing: 1.5,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  if (_isCorrect) {
-                                    return;
-                                  }
-                                  calculateNextGuess(false);
-                                  _controller.animateToPage(
-                                    guess - 1,
-                                    duration: const Duration(milliseconds: 500),
-                                    curve: Curves.easeIn,
-                                  );
-                                },
-                                // change border radius
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.all(18),
-                                  backgroundColor: Colors.black,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                                child: Text(
-                                  "Below ${_index + 1} ?".toUpperCase(),
-                                  style: GoogleFonts.notoSans(
-                                    fontSize: 10,
-                                    letterSpacing: 1.5,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                        child: GameController(
+                          aboveLabel: 'above ${_index + 1} ?',
+                          onAbovePressed: _aboveAction,
+                          correctLabel: 'correct',
+                          onCorrectPressed: _correctAction,
+                          belowLabel: 'below ${_index + 1} ?',
+                          onBelowPressed: _belowAction,
                         ),
                       ),
                     ),
